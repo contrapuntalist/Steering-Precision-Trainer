@@ -11,9 +11,9 @@ Works with **Simucube and most Direct Drive wheels** via the browser **Gamepad A
 ---
 
 ## What it trains
-- Steering accuracy/ fine muscle memory
+- Steering accuracy/ fine steering muscle memory
 - Holding the correct steering angle under time pressure
-- Steering weak spots (after 120 degrees)
+- Steering weak spots (oversteering correction after 120 degrees of countersteer angle for example)
 
 ---
 
