@@ -40,3 +40,13 @@ You’ll see **Last** and **Avg** reaction time at the top.
 ## Share your results
 Try: **±4° tolerance / 200ms hold / 25 hits**  
 Post your Avg + Last and tag **@bryceliracerpanda**
+
+
+## Attribution
+
+**Steering Precision Trainer**  
+Concept, training design, and methodology by **Bryce Li**.  
+Implementation created with AI-assisted coding.
+
+This project is open-source and free to use under the MIT License.  
+If you share, fork, or feature this tool, please retain this attribution.
