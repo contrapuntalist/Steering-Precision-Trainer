@@ -1,0 +1,864 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Steering Precision Trainer</title>
+
+<style>
+  html, body{ height:100%; margin:0; overflow:hidden; background:#0e1014; }
+  body{ font-family: Arial, sans-serif; color:#eee; }
+
+  /* Top text */
+  #title{ position:fixed; left:10px; top:10px; font-size:20px; font-weight:300; z-index:20; }
+  #status{ position:fixed; left:10px; top:40px; font-size:15px; z-index:20; }
+  #stats{ position:fixed; left:10px; top:70px; font-size:13px; color:#aaa; z-index:20; max-width: 980px; }
+
+  /* IG watermark */
+  #igWatermark{
+    position:fixed; top:12px; right:12px; z-index:1000;
+    font-size:13px; font-weight:600; letter-spacing:0.2px;
+    color:rgba(255,255,255,0.88); text-decoration:none;
+    padding:6px 10px; border-radius:10px;
+    background:rgba(0,0,0,0.35); border:1px solid rgba(255,255,255,0.15);
+    backdrop-filter: blur(6px);
+    transition: all .15s ease;
+  }
+  #igWatermark:hover{ background:rgba(255,255,255,0.12); transform: translateY(-1px); }
+
+  /* Panels */
+  .panel{
+    position:fixed; bottom:10px; width:360px;
+    background:rgba(20,20,20,0.92);
+    padding:10px; border-radius:10px;
+    font-size:12px; z-index:30;
+  }
+  #leftPanel{ left:10px; }
+  #rightPanel{ right:10px; display:none; }
+
+  label{ display:block; margin-top:6px; }
+  input[type="range"]{ width:100%; }
+  input[type="checkbox"]{ transform: translateY(1px); }
+
+  .sectionTitle{ font-weight:700; color:#c9d1d9; margin-top:6px; }
+  .hint{ color:#9aa3ad; font-size:11px; margin-top:6px; line-height:1.25; }
+
+  details{
+    margin-top:8px;
+    border:1px solid rgba(255,255,255,0.10);
+    border-radius:10px;
+    background:rgba(255,255,255,0.03);
+    padding:8px 10px;
+  }
+  summary{
+    cursor:pointer;
+    font-weight:700;
+    color:#c9d1d9;
+    user-select:none;
+    outline:none;
+  }
+  details[open]{ background:rgba(255,255,255,0.04); }
+
+  /* Rim view */
+  #rimContainer{
+    position:absolute; left:50%; top:50%;
+    transform:translate(-50%,-50%);
+    border:4px solid #333;
+    border-radius:50%;
+  }
+  .marker{
+    position:absolute;
+    transform:translate(-50%,-50%);
+    border-radius:50%;
+  }
+  #player{ background:#4aa3ff; }
+  #target{ background:#ff5555; opacity:0; }
+
+  /* Slider view */
+  #sliderContainer{
+    position:absolute; left:50%; top:50%;
+    transform:translate(-50%,-50%);
+    display:none;
+  }
+  #bar{
+    position:relative;
+    background:#222;
+    border:2px solid #333;
+    border-radius:12px;
+    box-sizing:border-box;
+  }
+  .barMarker{ position:absolute; border-radius:6px; }
+  #barPlayer{ background:#4aa3ff; }
+  #barTarget{ background:#ff5555; opacity:0; }
+</style>
+</head>
+
+<body>
+  <div id="title">Steering Precision Trainer</div>
+  <div id="status">Wheel live · SPACE spawns target · target stays on until hit</div>
+  <div id="stats"></div>
+
+  <a id="igWatermark" href="https://instagram.com/bryceliracerpanda" target="_blank" rel="noopener noreferrer">
+    @bryceliracerpanda
+  </a>
+
+  <!-- RIM -->
+  <div id="rimContainer" style="width:520px;height:520px;">
+    <div id="player" class="marker" style="width:16px;height:16px;"></div>
+    <div id="target" class="marker" style="width:18px;height:18px;"></div>
+  </div>
+
+  <!-- SLIDER -->
+  <div id="sliderContainer">
+    <div id="bar">
+      <div id="barPlayer" class="barMarker"></div>
+      <div id="barTarget" class="barMarker"></div>
+    </div>
+  </div>
+
+  <!-- LEFT PANEL: GLOBAL + RIM -->
+  <div id="leftPanel" class="panel">
+    <div class="sectionTitle">Global (all modes)</div>
+
+    <!-- LEFT toggle (global) -->
+    <label>
+      <input type="checkbox" id="sliderModeLeftToggle">
+      Slider Mode (linear)
+    </label>
+
+    <label>Tolerance (°): <span id="tolVal">6</span></label>
+    <input type="range" id="tol" min="1" max="25" step="0.5" value="6" />
+
+    <label>Hold Time (ms): <span id="holdVal">180</span></label>
+    <input type="range" id="hold" min="50" max="600" step="10" value="180" />
+
+    <div class="hint">Rim = large-angle steering · Slider = fine endpoint control</div>
+
+    <details id="rimControlsBox">
+      <summary>Rim Controls</summary>
+      <label>Wheel Size (px): <span id="wheelSizeVal">520</span></label>
+      <input type="range" id="wheelSize" min="300" max="900" step="10" value="520" />
+
+      <label>Rim Radius (px): <span id="rimRadiusVal">230</span></label>
+      <input type="range" id="rimRadius" min="100" max="450" step="5" value="230" />
+    </details>
+
+    <details id="lowerHalfBox">
+      <summary>Lower Half Mode</summary>
+      <label><input type="checkbox" id="lowerLeft"> Lower-Left only (180°→270°)</label>
+      <label><input type="checkbox" id="lowerRight"> Lower-Right only (90°→180°)</label>
+      <div class="hint">None = full circle. Both = full bottom half (90°→270°).</div>
+    </details>
+
+    <details id="targetIntervalBoxRim" open>
+      <summary>Target & Interval</summary>
+      <label>Player Size (px): <span id="playerSizeVal">16</span></label>
+      <input type="range" id="playerSize" min="6" max="50" step="1" value="16" />
+
+      <label>Target Size (px): <span id="targetSizeVal">18</span></label>
+      <input type="range" id="targetSize" min="6" max="60" step="1" value="18" />
+
+      <label>Off-time after hit (ms): <span id="offVal">700</span></label>
+      <input type="range" id="off" min="0" max="3000" step="25" value="700" />
+    </details>
+
+    <details id="randomBoxRim">
+      <summary>Random Spawn</summary>
+      <label><input type="checkbox" id="randomMode"> Random Spawn Mode</label>
+
+      <label>Min Delay (s): <span id="randMinVal">0.5</span></label>
+      <input type="range" id="randMin" min="0.5" max="10" step="0.1" value="0.5" />
+
+      <label>Max Delay (s): <span id="randMaxVal">2.0</span></label>
+      <input type="range" id="randMax" min="0.5" max="10" step="0.1" value="2.0" />
+    </details>
+
+    <details id="movingBoxRim">
+      <summary>Moving Target</summary>
+      <label><input type="checkbox" id="moveMode"> Moving Target Mode</label>
+
+      <label>Move Range (°): <span id="moveRangeVal">90</span></label>
+      <input type="range" id="moveRange" min="10" max="180" step="5" value="90" />
+
+      <label>Move Speed (°/s): <span id="moveSpeedVal">60</span></label>
+      <input type="range" id="moveSpeed" min="5" max="360" step="5" value="60" />
+    </details>
+
+    <div class="hint">SPACE spawns a target. Works with Simucube via browser Gamepad API.</div>
+  </div>
+
+  <!-- RIGHT PANEL: SLIDER (includes Global too) -->
+  <div id="rightPanel" class="panel">
+    <div class="sectionTitle">Global (all modes)</div>
+
+    <!-- RIGHT toggle (to switch back) -->
+    <label style="margin-top:2px;">
+      <input type="checkbox" id="sliderModeRightToggle">
+      Slider Mode (linear)
+    </label>
+
+    <!-- ✅ Global sliders duplicated here, synced in JS -->
+    <label>Tolerance (°): <span id="tolValR">6</span></label>
+    <input type="range" id="tolR" min="1" max="25" step="0.5" value="6" />
+
+    <label>Hold Time (ms): <span id="holdValR">180</span></label>
+    <input type="range" id="holdR" min="50" max="600" step="10" value="180" />
+
+    <details open>
+      <summary>Slider Controls</summary>
+      <label>Bar Width (px): <span id="barWVal">700</span></label>
+      <input type="range" id="barW" min="300" max="1200" step="10" value="700" />
+
+      <label>Bar Height (px): <span id="barHVal">18</span></label>
+      <input type="range" id="barH" min="8" max="80" step="1" value="18" />
+
+      <label>Marker Width (px): <span id="mWVal">12</span></label>
+      <input type="range" id="mW" min="4" max="80" step="1" value="12" />
+
+      <label>Marker Height (px): <span id="mHVal">34</span></label>
+      <input type="range" id="mH" min="10" max="180" step="1" value="34" />
+    </details>
+
+    <details id="targetIntervalBoxSlider" open>
+      <summary>Target & Interval</summary>
+      <label>Off-time after hit (ms): <span id="offVal2">700</span></label>
+      <input type="range" id="off2" min="0" max="3000" step="25" value="700" />
+    </details>
+
+    <details id="randomBoxSlider">
+      <summary>Random Spawn</summary>
+      <label><input type="checkbox" id="randomMode2"> Random Spawn Mode</label>
+
+      <label>Min Delay (s): <span id="randMinVal2">0.5</span></label>
+      <input type="range" id="randMin2" min="0.5" max="10" step="0.1" value="0.5" />
+
+      <label>Max Delay (s): <span id="randMaxVal2">2.0</span></label>
+      <input type="range" id="randMax2" min="0.5" max="10" step="0.1" value="2.0" />
+    </details>
+
+    <details id="movingBoxSlider">
+      <summary>Moving Target</summary>
+      <label><input type="checkbox" id="moveMode2"> Moving Target Mode</label>
+
+      <label>Move Range (°): <span id="moveRangeVal2">90</span></label>
+      <input type="range" id="moveRange2" min="10" max="180" step="5" value="90" />
+
+      <label>Move Speed (°/s): <span id="moveSpeedVal2">60</span></label>
+      <input type="range" id="moveSpeed2" min="5" max="360" step="5" value="60" />
+    </details>
+  </div>
+
+<script>
+/* =========================
+   STATE
+========================= */
+let toleranceDeg = 6;
+let holdTimeMs = 180;
+
+let wheelSize = 520;
+let rimRadius = 230;
+
+let playerSize = 16;
+let targetSize = 18;
+
+let offTimeMs = 700;
+
+let randomEnabled = false;
+let randMinMs = 500;
+let randMaxMs = 2000;
+
+let moveEnabled = false;
+let moveRangeDeg = 90;
+let moveSpeedDeg = 60;
+
+let sliderEnabled = false;
+let barW = 700;
+let barH = 18;
+let mW = 12;
+let mH = 34;
+
+// runtime
+let gamepadIndex = null;
+let steer = 0;
+
+let active = false;
+let appearTime = 0;
+let holdStart = null;
+let spawnTimeout = null;
+
+let targetAngle = 0;
+let trials = 0;
+let totalTime = 0;
+let lastReactionSec = null;
+
+// moving target internals
+let moveActive = false;
+let moveCenter = 0;
+let movePhase = 0;
+let moveDir = 1;
+let lastFrameTime = performance.now();
+
+/* =========================
+   DOM
+========================= */
+const rimContainer = document.getElementById("rimContainer");
+const sliderContainer = document.getElementById("sliderContainer");
+const barEl = document.getElementById("bar");
+
+const playerEl = document.getElementById("player");
+const targetEl = document.getElementById("target");
+const barPlayerEl = document.getElementById("barPlayer");
+const barTargetEl = document.getElementById("barTarget");
+
+const statusEl = document.getElementById("status");
+const statsEl = document.getElementById("stats");
+
+// Toggles
+const sliderModeLeftToggle = document.getElementById("sliderModeLeftToggle");
+const sliderModeRightToggle = document.getElementById("sliderModeRightToggle");
+
+// Global (left)
+const tol = document.getElementById("tol");
+const tolVal = document.getElementById("tolVal");
+const hold = document.getElementById("hold");
+const holdVal = document.getElementById("holdVal");
+
+// Global (right)
+const tolR = document.getElementById("tolR");
+const tolValR = document.getElementById("tolValR");
+const holdR = document.getElementById("holdR");
+const holdValR = document.getElementById("holdValR");
+
+// Rim controls
+const wheelSizeSl = document.getElementById("wheelSize");
+const wheelSizeVal = document.getElementById("wheelSizeVal");
+const rimRadiusSl = document.getElementById("rimRadius");
+const rimRadiusVal = document.getElementById("rimRadiusVal");
+const lowerLeftChk = document.getElementById("lowerLeft");
+const lowerRightChk = document.getElementById("lowerRight");
+const playerSizeSl = document.getElementById("playerSize");
+const playerSizeVal = document.getElementById("playerSizeVal");
+const targetSizeSl = document.getElementById("targetSize");
+const targetSizeVal = document.getElementById("targetSizeVal");
+const off = document.getElementById("off");
+const offVal = document.getElementById("offVal");
+const randomMode = document.getElementById("randomMode");
+const randMin = document.getElementById("randMin");
+const randMinVal = document.getElementById("randMinVal");
+const randMax = document.getElementById("randMax");
+const randMaxVal = document.getElementById("randMaxVal");
+const moveMode = document.getElementById("moveMode");
+const moveRange = document.getElementById("moveRange");
+const moveRangeVal = document.getElementById("moveRangeVal");
+const moveSpeed = document.getElementById("moveSpeed");
+const moveSpeedVal = document.getElementById("moveSpeedVal");
+
+// Slider controls
+const barWSl = document.getElementById("barW");
+const barWVal = document.getElementById("barWVal");
+const barHSl = document.getElementById("barH");
+const barHVal = document.getElementById("barHVal");
+const mWSl = document.getElementById("mW");
+const mWVal = document.getElementById("mWVal");
+const mHSl = document.getElementById("mH");
+const mHVal = document.getElementById("mHVal");
+const off2 = document.getElementById("off2");
+const offVal2 = document.getElementById("offVal2");
+const randomMode2 = document.getElementById("randomMode2");
+const randMin2 = document.getElementById("randMin2");
+const randMinVal2 = document.getElementById("randMinVal2");
+const randMax2 = document.getElementById("randMax2");
+const randMaxVal2 = document.getElementById("randMaxVal2");
+const moveMode2 = document.getElementById("moveMode2");
+const moveRange2 = document.getElementById("moveRange2");
+const moveRangeVal2 = document.getElementById("moveRangeVal2");
+const moveSpeed2 = document.getElementById("moveSpeed2");
+const moveSpeedVal2 = document.getElementById("moveSpeedVal2");
+
+/* =========================
+   UTILS
+========================= */
+function clamp(x,a,b){ return Math.max(a, Math.min(b,x)); }
+function degToRad(d){ return d*Math.PI/180; }
+function normalizeAngle(a){ while(a>180)a-=360; while(a<-180)a+=360; return a; }
+
+function clearSpawnTimer(){
+  if(spawnTimeout) clearTimeout(spawnTimeout);
+  spawnTimeout = null;
+}
+function inSliderMode(){ return sliderEnabled; }
+
+function showTarget(on){
+  if(inSliderMode()){
+    barTargetEl.style.opacity = on ? 1 : 0;
+  } else {
+    targetEl.style.opacity = on ? 1 : 0;
+  }
+}
+
+function sampleRandomDelayMs(){
+  const minMs = Math.min(randMinMs, randMaxMs);
+  const maxMs = Math.max(randMinMs, randMaxMs);
+  return minMs + Math.random()*(maxMs-minMs);
+}
+
+/* =========================
+   VISUALS
+========================= */
+function setRimMarker(el, deg){
+  const r = degToRad(deg - 90);
+  const x = wheelSize/2 + rimRadius*Math.cos(r);
+  const y = wheelSize/2 + rimRadius*Math.sin(r);
+  el.style.left = x + "px";
+  el.style.top  = y + "px";
+}
+function applyRimSizes(){
+  rimContainer.style.width = wheelSize+"px";
+  rimContainer.style.height = wheelSize+"px";
+  playerEl.style.width = playerSize+"px";
+  playerEl.style.height = playerSize+"px";
+  targetEl.style.width = targetSize+"px";
+  targetEl.style.height = targetSize+"px";
+}
+function applySliderSizes(){
+  barEl.style.width = barW+"px";
+  barEl.style.height = barH+"px";
+  sliderContainer.style.width = barW+"px";
+
+  barPlayerEl.style.width = mW+"px";
+  barTargetEl.style.width = mW+"px";
+  barPlayerEl.style.height = mH+"px";
+  barTargetEl.style.height = mH+"px";
+
+  const topPx = (barH - mH)/2;
+  barPlayerEl.style.top = topPx + "px";
+  barTargetEl.style.top = topPx + "px";
+}
+function setSliderMarkerX(el, norm){
+  const x = ((norm + 1) * 0.5) * barW;
+  el.style.left = (x - mW/2) + "px";
+}
+
+/* =========================
+   SPAWN SAMPLING (RIM)
+========================= */
+function sampleRimAngle(){
+  const L = lowerLeftChk.checked;
+  const R = lowerRightChk.checked;
+
+  if(!L && !R) return Math.random()*360 - 180;
+  if(L && R) return (Math.random() < 0.5) ? (Math.random()*90 + 90) : (Math.random()*90 - 180);
+  if(R) return Math.random()*90 + 90;
+  return Math.random()*90 - 180;
+}
+
+/* =========================
+   SPAWN / HIT
+========================= */
+function spawnTarget(){
+  clearSpawnTimer();
+  holdStart = null;
+  appearTime = performance.now();
+  active = true;
+
+  targetAngle = inSliderMode()
+    ? (Math.random()*2 - 1) * 180
+    : sampleRimAngle();
+
+  moveActive = false;
+  if(moveEnabled){
+    moveActive = true;
+    moveCenter = targetAngle;
+    movePhase = 0;
+    moveDir = Math.random() < 0.5 ? -1 : 1;
+  }
+
+  showTarget(true);
+}
+
+function handleHit(){
+  const tSec = (performance.now() - appearTime)/1000;
+  lastReactionSec = tSec;
+
+  trials++;
+  totalTime += tSec;
+
+  active = false;
+  holdStart = null;
+  moveActive = false;
+
+  showTarget(false);
+  statusEl.innerText = `Hit: ${tSec.toFixed(2)}s`;
+
+  const delay = randomEnabled ? sampleRandomDelayMs() : offTimeMs;
+  spawnTimeout = setTimeout(spawnTarget, delay);
+  updateStats();
+}
+
+/* =========================
+   MOVING TARGET UPDATE
+========================= */
+function updateMovingTarget(dtSec){
+  if(!active || !moveActive) return;
+
+  const half = moveRangeDeg / 2;
+  movePhase += moveDir * moveSpeedDeg * dtSec;
+
+  if(movePhase > half){ movePhase = half; moveDir *= -1; }
+  else if(movePhase < -half){ movePhase = -half; moveDir *= -1; }
+
+  targetAngle = inSliderMode()
+    ? clamp(moveCenter + movePhase, -180, 180)
+    : normalizeAngle(moveCenter + movePhase);
+}
+
+/* =========================
+   GLOBAL SYNC (Tolerance / Hold)
+========================= */
+function setTolerance(v){
+  toleranceDeg = v;
+  tol.value = String(v);
+  tolR.value = String(v);
+  tolVal.innerText = String(v);
+  tolValR.innerText = String(v);
+  updateStats();
+}
+function setHold(v){
+  holdTimeMs = v;
+  hold.value = String(v);
+  holdR.value = String(v);
+  holdVal.innerText = String(v);
+  holdValR.innerText = String(v);
+  updateStats();
+}
+
+/* =========================
+   MODE SWITCH (AND TOGGLE SYNC)
+========================= */
+function setModeSlider(on){
+  sliderEnabled = on;
+
+  rimContainer.style.display = on ? "none" : "block";
+  sliderContainer.style.display = on ? "block" : "none";
+
+  document.getElementById("leftPanel").style.display = on ? "none" : "block";
+  document.getElementById("rightPanel").style.display = on ? "block" : "none";
+
+  sliderModeLeftToggle.checked = on;
+  sliderModeRightToggle.checked = on;
+
+  clearSpawnTimer();
+  active = false;
+  holdStart = null;
+  moveActive = false;
+  showTarget(false);
+
+  updateStats();
+}
+
+/* =========================
+   STATS
+========================= */
+function updateStats(){
+  const avg = trials ? (totalTime/trials) : 0;
+  const lastTxt = (lastReactionSec === null) ? "—" : `${lastReactionSec.toFixed(2)}s`;
+  const modeName = inSliderMode() ? "Slider" : "Rim";
+
+  const genTxt = randomEnabled
+    ? `Random (${(Math.min(randMinMs,randMaxMs)/1000).toFixed(1)}–${(Math.max(randMinMs,randMaxMs)/1000).toFixed(1)}s)`
+    : `Off-time (${offTimeMs}ms)`;
+
+  let extra = "";
+  if(!inSliderMode()){
+    const L = lowerLeftChk.checked, R = lowerRightChk.checked;
+    if(L && R) extra = " | Bottom half";
+    else if(L) extra = " | Lower-left";
+    else if(R) extra = " | Lower-right";
+  }
+
+  const moveTxt = moveEnabled ? ` | Move ON (${moveRangeDeg}° @ ${moveSpeedDeg}°/s)` : " | Move OFF";
+
+  statsEl.innerText =
+    `Mode: ${modeName} | Last: ${lastTxt} | Avg: ${avg.toFixed(2)}s | Trials: ${trials} | Gen: ${genTxt}${extra} | Tol: ±${toleranceDeg}° | Hold: ${holdTimeMs}ms${moveTxt}`;
+}
+
+/* =========================
+   INPUT: GAMEPAD + SPACE
+========================= */
+function pickGamepad(){
+  const pads = navigator.getGamepads();
+  for(let i=0;i<pads.length;i++) if(pads[i]) return i;
+  return null;
+}
+
+window.addEventListener("keydown", (e) => {
+  if(e.code === "Space"){
+    const idx = pickGamepad();
+    if(idx === null){
+      statusEl.innerText = "No wheel detected yet. Plug in / ensure browser sees it.";
+      return;
+    }
+    gamepadIndex = idx;
+    statusEl.innerText = "Training running (SPACE = restart target)";
+    spawnTarget();
+  }
+});
+
+/* =========================
+   LOOP
+========================= */
+function loop(now){
+  const dtSec = Math.max(0, (now - lastFrameTime)/1000);
+  lastFrameTime = now;
+
+  const idx = pickGamepad();
+  if(idx !== null) gamepadIndex = idx;
+
+  if(gamepadIndex !== null){
+    const gp = navigator.getGamepads()[gamepadIndex];
+    if(gp && gp.axes && gp.axes.length){
+      steer = clamp(gp.axes[0] ?? 0, -1, 1);
+    }
+  }
+
+  updateMovingTarget(dtSec);
+
+  if(inSliderMode()){
+    applySliderSizes();
+
+    const playerNorm = steer;
+    const targetNorm = clamp(targetAngle/180, -1, 1);
+
+    setSliderMarkerX(barPlayerEl, playerNorm);
+    setSliderMarkerX(barTargetEl, targetNorm);
+
+    if(active){
+      const errNorm = Math.abs(playerNorm - targetNorm);
+      const tolNorm = toleranceDeg/180;
+
+      if(errNorm < tolNorm){
+        if(!holdStart) holdStart = performance.now();
+        if(performance.now() - holdStart > holdTimeMs) handleHit();
+      } else holdStart = null;
+    }
+  } else {
+    applyRimSizes();
+
+    const playerAngle = steer * 180;
+    setRimMarker(playerEl, playerAngle);
+    setRimMarker(targetEl, targetAngle);
+
+    if(active){
+      const err = Math.abs(normalizeAngle(playerAngle - targetAngle));
+      if(err < toleranceDeg){
+        if(!holdStart) holdStart = performance.now();
+        if(performance.now() - holdStart > holdTimeMs) handleHit();
+      } else holdStart = null;
+    }
+  }
+
+  requestAnimationFrame(loop);
+}
+
+/* =========================
+   BINDINGS (TOGGLES)
+========================= */
+sliderModeLeftToggle.addEventListener("change", () => setModeSlider(sliderModeLeftToggle.checked));
+sliderModeRightToggle.addEventListener("change", () => setModeSlider(sliderModeRightToggle.checked));
+
+/* =========================
+   BINDINGS (GLOBAL SYNC)
+========================= */
+tol.addEventListener("input", () => setTolerance(Number(tol.value)));
+tolR.addEventListener("input", () => setTolerance(Number(tolR.value)));
+
+hold.addEventListener("input", () => setHold(Number(hold.value)));
+holdR.addEventListener("input", () => setHold(Number(holdR.value)));
+
+/* =========================
+   BINDINGS (RIM)
+========================= */
+wheelSizeSl.addEventListener("input", () => {
+  wheelSize = Number(wheelSizeSl.value);
+  wheelSizeVal.innerText = wheelSizeSl.value;
+  applyRimSizes();
+});
+rimRadiusSl.addEventListener("input", () => {
+  rimRadius = Number(rimRadiusSl.value);
+  rimRadiusVal.innerText = rimRadiusSl.value;
+});
+playerSizeSl.addEventListener("input", () => {
+  playerSize = Number(playerSizeSl.value);
+  playerSizeVal.innerText = playerSizeSl.value;
+  applyRimSizes();
+});
+targetSizeSl.addEventListener("input", () => {
+  targetSize = Number(targetSizeSl.value);
+  targetSizeVal.innerText = targetSizeSl.value;
+  applyRimSizes();
+});
+off.addEventListener("input", () => {
+  offTimeMs = Number(off.value);
+  offVal.innerText = off.value;
+  off2.value = off.value;
+  offVal2.innerText = off.value;
+  updateStats();
+});
+randomMode.addEventListener("change", () => {
+  randomEnabled = randomMode.checked;
+  randomMode2.checked = randomEnabled;
+  updateStats();
+});
+randMin.addEventListener("input", () => {
+  randMinMs = Number(randMin.value) * 1000;
+  randMinVal.innerText = randMin.value;
+  randMin2.value = randMin.value;
+  randMinVal2.innerText = randMin.value;
+  updateStats();
+});
+randMax.addEventListener("input", () => {
+  randMaxMs = Number(randMax.value) * 1000;
+  randMaxVal.innerText = randMax.value;
+  randMax2.value = randMax.value;
+  randMaxVal2.innerText = randMax.value;
+  updateStats();
+});
+moveMode.addEventListener("change", () => {
+  moveEnabled = moveMode.checked;
+  moveMode2.checked = moveEnabled;
+  updateStats();
+});
+moveRange.addEventListener("input", () => {
+  moveRangeDeg = Number(moveRange.value);
+  moveRangeVal.innerText = moveRange.value;
+  moveRange2.value = moveRange.value;
+  moveRangeVal2.innerText = moveRange.value;
+  updateStats();
+});
+moveSpeed.addEventListener("input", () => {
+  moveSpeedDeg = Number(moveSpeed.value);
+  moveSpeedVal.innerText = moveSpeed.value;
+  moveSpeed2.value = moveSpeed.value;
+  moveSpeedVal2.innerText = moveSpeed.value;
+  updateStats();
+});
+lowerLeftChk.addEventListener("change", updateStats);
+lowerRightChk.addEventListener("change", updateStats);
+
+/* =========================
+   BINDINGS (SLIDER PANEL)
+========================= */
+barWSl.addEventListener("input", () => {
+  barW = Number(barWSl.value);
+  barWVal.innerText = barWSl.value;
+  applySliderSizes();
+  updateStats();
+});
+barHSl.addEventListener("input", () => {
+  barH = Number(barHSl.value);
+  barHVal.innerText = barHSl.value;
+  applySliderSizes();
+  updateStats();
+});
+mWSl.addEventListener("input", () => {
+  mW = Number(mWSl.value);
+  mWVal.innerText = mWSl.value;
+  applySliderSizes();
+  updateStats();
+});
+mHSl.addEventListener("input", () => {
+  mH = Number(mHSl.value);
+  mHVal.innerText = mHSl.value;
+  applySliderSizes();
+  updateStats();
+});
+off2.addEventListener("input", () => {
+  offTimeMs = Number(off2.value);
+  offVal2.innerText = off2.value;
+  off.value = off2.value;
+  offVal.innerText = off2.value;
+  updateStats();
+});
+randomMode2.addEventListener("change", () => {
+  randomEnabled = randomMode2.checked;
+  randomMode.checked = randomEnabled;
+  updateStats();
+});
+randMin2.addEventListener("input", () => {
+  randMinMs = Number(randMin2.value) * 1000;
+  randMinVal2.innerText = randMin2.value;
+  randMin.value = randMin2.value;
+  randMinVal.innerText = randMin2.value;
+  updateStats();
+});
+randMax2.addEventListener("input", () => {
+  randMaxMs = Number(randMax2.value) * 1000;
+  randMaxVal2.innerText = randMax2.value;
+  randMax.value = randMax2.value;
+  randMaxVal.innerText = randMax2.value;
+  updateStats();
+});
+moveMode2.addEventListener("change", () => {
+  moveEnabled = moveMode2.checked;
+  moveMode.checked = moveEnabled;
+  updateStats();
+});
+moveRange2.addEventListener("input", () => {
+  moveRangeDeg = Number(moveRange2.value);
+  moveRangeVal2.innerText = moveRange2.value;
+  moveRange.value = moveRange2.value;
+  moveRangeVal.innerText = moveRange2.value;
+  updateStats();
+});
+moveSpeed2.addEventListener("input", () => {
+  moveSpeedDeg = Number(moveSpeed2.value);
+  moveSpeedVal2.innerText = moveSpeed2.value;
+  moveSpeed.value = moveSpeed2.value;
+  moveSpeedVal.innerText = moveSpeed2.value;
+  updateStats();
+});
+
+/* =========================
+   INIT
+========================= */
+(function init(){
+  applyRimSizes();
+  applySliderSizes();
+  showTarget(false);
+
+  setModeSlider(false);
+
+  // init global sync
+  setTolerance(Number(tol.value));
+  setHold(Number(hold.value));
+
+  wheelSizeVal.innerText = wheelSizeSl.value;
+  rimRadiusVal.innerText = rimRadiusSl.value;
+
+  playerSizeVal.innerText = playerSizeSl.value;
+  targetSizeVal.innerText = targetSizeSl.value;
+
+  offVal.innerText = off.value;
+  offVal2.innerText = off2.value;
+
+  randMinVal.innerText = randMin.value;
+  randMaxVal.innerText = randMax.value;
+  randMinVal2.innerText = randMin2.value;
+  randMaxVal2.innerText = randMax2.value;
+
+  moveRangeVal.innerText = moveRange.value;
+  moveSpeedVal.innerText = moveSpeed.value;
+  moveRangeVal2.innerText = moveRange2.value;
+  moveSpeedVal2.innerText = moveSpeed2.value;
+
+  barWVal.innerText = barWSl.value;
+  barHVal.innerText = barHSl.value;
+  mWVal.innerText = mWSl.value;
+  mHVal.innerText = mHSl.value;
+
+  updateStats();
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
