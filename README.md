@@ -3,7 +3,7 @@
 
 **Open the trainer:** https://contrapuntalist.github.io/Steering-Precision-Trainer/
 
-A free, browser-based steering precision trainer for sim racers and real drivers.  
+A free, browser-based steering precision/reaction trainer for sim racers and real drivers alike. This project is based on my original idea and training concept. I’m not a professional developer, so the code itself was generated with the help of AI, guided by my requirements, testing, and revisions. The goal was to create a practical steering precision trainer that fine tunes one's muscle memory - something I’ve felt has been missing from both sim racing and real-world driver training.
 Works with **Simucube and most Direct Drive wheels** via the browser **Gamepad API**.
 
 **Creator:** Instagram → https://instagram.com/bryceliracerpanda
